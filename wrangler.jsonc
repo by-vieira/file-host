@@ -4,23 +4,38 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "files-service",
+	"name": "file-host",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-08-12",
+	"workers_dev": false,
+	"preview_urls": false,
+	"secrets": {
+		"required": ["UPLOAD_TOKEN"]
+	},
 	"observability": {
 		"enabled": true
 	},
 	"upload_source_maps": true,
 	"routes": [
 		{
-			"pattern": "files.vieira.tools",
+			"pattern": "file-host.vieira.tools",
 			"custom_domain": true
 		}
 	],
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",
-			"bucket_name": "files-service"
+			"bucket_name": "file-host"
+		}
+	],
+	"ratelimits": [
+		{
+			"name": "UPLOAD_RATE_LIMITER",
+			"namespace_id": "274981531",
+			"simple": {
+				"limit": 60,
+				"period": 60
+			}
 		}
 	]
 	/**

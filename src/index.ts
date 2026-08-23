@@ -13,16 +13,19 @@ import { generateKey } from './keys';
 
 /** Every key carries a random suffix, so a URL always points at the same bytes. */
 const IMMUTABLE = 'public, max-age=31536000, immutable';
+const MAX_UPLOAD_BYTES = 100_000_000;
+const MIN_TOKEN_LENGTH = 32;
 
-const USAGE = `files.vieira.tools
+const USAGE = `file-host.vieira.tools
 
 Upload:
   curl -sS --fail-with-body -X PUT -T <path-to-file> \\
     -H "X-Upload-Token: $FILE_HOST_TOKEN" \\
-    https://files.vieira.tools/<filename>
+    https://file-host.vieira.tools/<filename>
 
 The response body is the permanent public URL. Use only the basename for
 <filename>; it is slugified and given a random suffix, so it need not be unique.
+Files are public. The maximum upload size is 100 MB.
 `;
 
 export default {
@@ -53,6 +56,9 @@ async function upload(request: Request, env: Env, host: string, filename: string
 	if (!env.UPLOAD_TOKEN) {
 		return text('Server misconfigured: UPLOAD_TOKEN is not set\n', 500);
 	}
+	if (env.UPLOAD_TOKEN.length < MIN_TOKEN_LENGTH) {
+		return text(`Server misconfigured: UPLOAD_TOKEN must be at least ${MIN_TOKEN_LENGTH} characters\n`, 500);
+	}
 
 	if (!(await isValidToken(request.headers.get('X-Upload-Token'), env.UPLOAD_TOKEN))) {
 		return text('Invalid or missing X-Upload-Token\n', 401);
@@ -61,18 +67,34 @@ async function upload(request: Request, env: Env, host: string, filename: string
 	if (filename === '') return text('Provide a filename: PUT /<filename>\n', 400);
 	if (request.body === null) return text('Request body is empty\n', 400);
 
+	const uploadSize = declaredUploadSize(request);
+	if (uploadSize === null) return text('Content-Length is required for uploads\n', 411);
+	if (uploadSize > MAX_UPLOAD_BYTES) return uploadTooLarge();
+
+	const { success } = await env.UPLOAD_RATE_LIMITER.limit({ key: 'uploads' });
+	if (!success) {
+		return text('Upload rate limit exceeded\n', 429, { 'Retry-After': '60' });
+	}
+
 	const key = generateKey(filename);
 
-	// Streamed, not buffered: uploads routinely exceed the 128 MB isolate memory limit.
-	await env.BUCKET.put(key, request.body, {
+	// Keeping the original body preserves the known length that R2 requires for a
+	// streaming put. Cloudflare rejects requests whose bytes disagree with the
+	// Content-Length header.
+	const stored = await env.BUCKET.put(key, request.body, {
+		onlyIf: new Headers({ 'If-None-Match': '*' }),
 		httpMetadata: {
-			contentType: contentTypeFor(key, request.headers.get('Content-Type')),
+			contentType: contentTypeFor(key),
 			cacheControl: IMMUTABLE,
 			// Inline, so images and video render in a browser rather than downloading.
 			contentDisposition: 'inline',
 		},
 		customMetadata: { originalFilename: filename.slice(0, 256) },
 	});
+
+	// A collision is vanishingly unlikely, but overwriting would break every cache
+	// and caller that already treats the URL as immutable.
+	if (stored === null) return text('Generated key already exists; retry the upload\n', 409);
 
 	// Always https, never the inbound scheme: this URL is permanent and gets pasted
 	// into pull requests, so it must not depend on how the upload happened to arrive.
@@ -94,10 +116,16 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 	headers.set('Cache-Control', IMMUTABLE);
 	headers.set('Accept-Ranges', 'bytes');
 	headers.set('X-Content-Type-Options', 'nosniff');
-	// Uploads are untrusted. Sandboxing drops HTML and SVG into an opaque origin,
-	// so a hostile upload cannot reach cookies or storage on this domain, while
-	// scripts still run for the HTML reports this service exists to host.
-	headers.set('Content-Security-Policy', 'sandbox allow-scripts allow-forms');
+	headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+	headers.set('Referrer-Policy', 'no-referrer');
+	headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	headers.set('Permissions-Policy', 'camera=(), geolocation=(), microphone=(), payment=(), usb=()');
+	// HTML reports can run scripts, but cannot keep this origin, submit forms, set a
+	// base URL, or be framed by another site.
+	headers.set(
+		'Content-Security-Policy',
+		"sandbox allow-scripts; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+	);
 
 	// R2 signals a failed `onlyIf` by returning the object without a body.
 	if (!('body' in object)) {
@@ -166,6 +194,18 @@ function decodePath(pathname: string): string | null {
 	} catch {
 		return null;
 	}
+}
+
+function declaredUploadSize(request: Request): number | null {
+	const value = request.headers.get('Content-Length');
+	if (value === null || !/^\d+$/.test(value)) return null;
+
+	const size = Number(value);
+	return Number.isSafeInteger(size) ? size : null;
+}
+
+function uploadTooLarge(): Response {
+	return text('Upload exceeds the 100 MB limit\n', 413);
 }
 
 function text(body: string, status = 200, extraHeaders: Record<string, string> = {}): Response {

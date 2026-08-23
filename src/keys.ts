@@ -6,15 +6,12 @@
 
 const MAX_SLUG_LENGTH = 64;
 const MAX_EXTENSION_LENGTH = 16;
-const SUFFIX_LENGTH = 8;
-
-/** Exactly 32 characters, so masking a random byte with 31 is unbiased. Omits
- *  i/l/o/u to avoid lookalikes and accidental words. */
-const SUFFIX_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
+const SUFFIX_BYTE_LENGTH = 16;
 
 /**
  * Turns a client-supplied filename into a safe, unique R2 key.
- * `Login Flow (final).MP4` becomes something like `login-flow-final-k3f9dq2m.mp4`.
+ * `Login Flow (final).MP4` becomes something like
+ * `login-flow-final-9f86d081884c7d659a2feaa0c55ad015.mp4`.
  */
 export function generateKey(filename: string): string {
 	const basename = filename.split(/[/\\]/).pop() ?? '';
@@ -57,6 +54,6 @@ function slugify(stem: string): string {
 }
 
 function randomSuffix(): string {
-	const bytes = crypto.getRandomValues(new Uint8Array(SUFFIX_LENGTH));
-	return Array.from(bytes, (byte) => SUFFIX_ALPHABET[byte & 31]).join('');
+	const bytes = crypto.getRandomValues(new Uint8Array(SUFFIX_BYTE_LENGTH));
+	return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

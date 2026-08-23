@@ -77,16 +77,15 @@ const PLAIN_TEXT = 'text/plain; charset=utf-8';
 const FALLBACK = 'application/octet-stream';
 
 /**
- * Resolves the type to store an upload under. The extension wins over the
- * caller's header because we generated the extension ourselves and a mislabelled
- * upload would otherwise be served under a type the caller chose.
+ * Resolves the type to store an upload under. Unknown extensions download as
+ * opaque bytes instead of using a caller-controlled executable type.
  */
-export function contentTypeFor(key: string, providedType: string | null): string {
+export function contentTypeFor(key: string): string {
 	const dot = key.lastIndexOf('.');
 	const extension = dot === -1 ? '' : key.slice(dot + 1).toLowerCase();
 
 	if (extension in CONTENT_TYPES) return CONTENT_TYPES[extension];
 	if (SOURCE_EXTENSIONS.has(extension)) return PLAIN_TEXT;
 
-	return providedType ?? FALLBACK;
+	return FALLBACK;
 }

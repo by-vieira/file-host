@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { generateKey } from '../src/keys';
 
-/** Keys are `<slug>-<8 char suffix>[.ext]`. */
-const SUFFIX = '[0-9a-z]{8}';
+/** Keys are `<slug>-<32 char hex suffix>[.ext]`. */
+const SUFFIX = '[0-9a-f]{32}';
 
 describe('generateKey', () => {
 	it('slugifies the name and preserves the extension', () => {
