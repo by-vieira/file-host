@@ -1,0 +1,15 @@
+{
+	"files.associations": {
+		"wrangler.json": "jsonc"
+	},
+	"[typescript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+	},
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.oxc": "always"
+	},
+	"oxc.unusedDisableDirectives": "warn",
+	"js/ts.tsdk.path": "node_modules/typescript/lib",
+	"typescript.native-preview.tsdk": "node_modules/@typescript/native-preview",
+}
