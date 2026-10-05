@@ -3,6 +3,10 @@
 A Cloudflare Worker that lets agents upload files to R2 and get back a permanent
 public URL for pull-request screenshots, recordings, and reports.
 
+Coding agents can attach text to a pull request but have no simple place to put
+a video or screenshot. This Worker gives them one `curl` command for it. The idea
+comes from [Theo Browne's file host](https://www.youtube.com/watch?v=e1snsuY4lTI).
+
 Live at `https://file-host.vieira.tools`.
 
 ## For agents
@@ -56,7 +60,8 @@ revalidation both work. Unknown extensions download as
 HTML and SVG run in an opaque sandbox. Reports can run scripts, but they cannot
 submit forms, use this hostname's cookies or storage, set a base URL, or be
 framed. Responses also disable sensitive browser permissions and search indexing.
-The hostname still identifies Morgan, so treat hosted documents as untrusted.
+Hosted pages still appear under this hostname, so only upload documents you would
+publish yourself.
 
 ## Setup
 
@@ -81,6 +86,8 @@ For local development, copy `.dev.vars.example` to `.dev.vars` and run
 | `npm run dev`        | Local development server       |
 | `npm test`           | Run the test suite             |
 | `npm run typecheck`  | Typecheck source and tests     |
+| `npm run lint`       | Lint with oxlint               |
+| `npm run format`     | Format with oxfmt              |
 | `npm run deploy`     | Deploy to Cloudflare           |
 | `npm run cf-typegen` | Regenerate `Env` from bindings |
 
