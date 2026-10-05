@@ -51,14 +51,14 @@ literally, and every uploaded file is public.
 
 ## Tech stack
 
-- **TypeScript**, with `strict` on.
+- **TypeScript 7**, with `strict` on. Its Go-based `tsc` typechecks the source
+  and tests.
 - **Cloudflare Workers** runs the code.
 - **Cloudflare R2** stores the files.
 - **Workers Rate Limiting** caps uploads.
 - **Wrangler 4** runs local development, deploys, and generates binding types.
 - **Vitest 4** with `@cloudflare/vitest-plugin` runs the tests inside `workerd`,
   the same runtime as production, against a local R2 bucket.
-- **tsgo**, the TypeScript native preview, typechecks the source and tests.
 - **oxlint** lints the code and **oxfmt** formats it.
 - **GitHub Actions** runs format, lint, typecheck, and tests on every push.
 

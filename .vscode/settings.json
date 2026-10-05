@@ -9,6 +9,5 @@
 	"editor.codeActionsOnSave": {
 		"source.fixAll.oxc": "always"
 	},
-	"oxc.unusedDisableDirectives": "warn",
-	"js/ts.tsdk.path": "node_modules/typescript/lib"
+	"oxc.unusedDisableDirectives": "warn"
 }
