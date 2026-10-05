@@ -7,7 +7,9 @@
  * to a fixed 32 bytes first and the digests are compared instead.
  */
 export async function isValidToken(provided: string | null, expected: string): Promise<boolean> {
-	if (provided === null) return false;
+	if (provided === null) {
+		return false;
+	}
 
 	const [providedDigest, expectedDigest] = await Promise.all([sha256(provided), sha256(expected)]);
 

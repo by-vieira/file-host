@@ -26,10 +26,14 @@ export function generateKey(filename: string): string {
  */
 function splitExtension(basename: string): { stem: string; extension: string } {
 	const dot = basename.lastIndexOf(".");
-	if (dot <= 0) return { stem: basename, extension: "" };
+	if (dot <= 0) {
+		return { stem: basename, extension: "" };
+	}
 
 	const extension = basename.slice(dot + 1).toLowerCase();
-	if (!isPlausibleExtension(extension)) return { stem: basename, extension: "" };
+	if (!isPlausibleExtension(extension)) {
+		return { stem: basename, extension: "" };
+	}
 
 	return { stem: basename.slice(0, dot), extension: `.${extension}` };
 }

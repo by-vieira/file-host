@@ -32,8 +32,9 @@ export default {
 	async fetch(request, env): Promise<Response> {
 		const url = new URL(request.url);
 		const path = decodePath(url.pathname);
-
-		if (path === null) return text("Malformed path\n", 400);
+		if (path === null) {
+			return text("Malformed path\n", 400);
+		}
 
 		switch (request.method) {
 			case "PUT":
@@ -72,12 +73,20 @@ async function upload(
 		return text("Invalid or missing X-Upload-Token\n", 401);
 	}
 
-	if (filename === "") return text("Provide a filename: PUT /<filename>\n", 400);
-	if (request.body === null) return text("Request body is empty\n", 400);
+	if (filename === "") {
+		return text("Provide a filename: PUT /<filename>\n", 400);
+	}
+	if (request.body === null) {
+		return text("Request body is empty\n", 400);
+	}
 
 	const uploadSize = declaredUploadSize(request);
-	if (uploadSize === null) return text("Content-Length is required for uploads\n", 411);
-	if (uploadSize > MAX_UPLOAD_BYTES) return uploadTooLarge();
+	if (uploadSize === null) {
+		return text("Content-Length is required for uploads\n", 411);
+	}
+	if (uploadSize > MAX_UPLOAD_BYTES) {
+		return uploadTooLarge();
+	}
 
 	const { success } = await env.UPLOAD_RATE_LIMITER.limit({ key: "uploads" });
 	if (!success) {
@@ -102,7 +111,9 @@ async function upload(
 
 	// A collision is vanishingly unlikely, but overwriting would break every cache
 	// and caller that already treats the URL as immutable.
-	if (stored === null) return text("Generated key already exists; retry the upload\n", 409);
+	if (stored === null) {
+		return text("Generated key already exists; retry the upload\n", 409);
+	}
 
 	// Always https, never the inbound scheme: this URL is permanent and gets pasted
 	// into pull requests, so it must not depend on how the upload happened to arrive.
@@ -115,8 +126,9 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 		onlyIf: request.headers,
 		range: request.headers,
 	});
-
-	if (object === null) return text("Not found\n", 404);
+	if (object === null) {
+		return text("Not found\n", 404);
+	}
 
 	const headers = new Headers();
 	object.writeHttpMetadata(headers);
@@ -153,6 +165,7 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 	if (request.method === "HEAD") {
 		const length = range === null ? object.size : range.end - range.start + 1;
 		headers.set("Content-Length", String(length));
+
 		return new Response(null, { status: range === null ? 200 : 206, headers });
 	}
 
@@ -168,6 +181,7 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 function preconditionStatus(request: Request): 304 | 412 {
 	const revalidating =
 		request.headers.has("If-None-Match") || request.headers.has("If-Modified-Since");
+
 	return revalidating ? 304 : 412;
 }
 
@@ -186,14 +200,17 @@ function resolveRange(
 	range: R2Range | undefined,
 	size: number,
 ): { start: number; end: number } | null {
-	if (range === undefined) return null;
+	if (range === undefined) {
+		return null;
+	}
 
 	const { offset, length, suffix } = range as RuntimeRange;
-
 	if (suffix !== undefined) {
 		return { start: Math.max(0, size - suffix), end: size - 1 };
 	}
-	if (offset === undefined && length === undefined) return null;
+	if (offset === undefined && length === undefined) {
+		return null;
+	}
 
 	const start = offset ?? 0;
 	return { start, end: start + (length ?? size - start) - 1 };
@@ -210,7 +227,9 @@ function decodePath(pathname: string): string | null {
 
 function declaredUploadSize(request: Request): number | null {
 	const value = request.headers.get("Content-Length");
-	if (value === null || !/^\d+$/.test(value)) return null;
+	if (value === null || !/^\d+$/.test(value)) {
+		return null;
+	}
 
 	const size = Number(value);
 	return Number.isSafeInteger(size) ? size : null;

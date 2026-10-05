@@ -84,8 +84,12 @@ export function contentTypeFor(key: string): string {
 	const dot = key.lastIndexOf(".");
 	const extension = dot === -1 ? "" : key.slice(dot + 1).toLowerCase();
 
-	if (extension in CONTENT_TYPES) return CONTENT_TYPES[extension];
-	if (SOURCE_EXTENSIONS.has(extension)) return PLAIN_TEXT;
+	if (extension in CONTENT_TYPES) {
+		return CONTENT_TYPES[extension];
+	}
+	if (SOURCE_EXTENSIONS.has(extension)) {
+		return PLAIN_TEXT;
+	}
 
 	return FALLBACK;
 }
