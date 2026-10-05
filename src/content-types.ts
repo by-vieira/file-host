@@ -4,45 +4,49 @@
  * an upload inline or offer it as a download based on the type we serve.
  */
 
-const CONTENT_TYPES: Record<string, string> = {
-	// Images
-	png: "image/png",
-	jpg: "image/jpeg",
-	jpeg: "image/jpeg",
-	gif: "image/gif",
-	webp: "image/webp",
-	avif: "image/avif",
-	svg: "image/svg+xml",
-	ico: "image/x-icon",
-	bmp: "image/bmp",
+// A Map rather than an object literal, so extensions such as `constructor` cannot
+// match inherited Object properties.
+const CONTENT_TYPES = new Map(
+	Object.entries({
+		// Images
+		png: "image/png",
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		gif: "image/gif",
+		webp: "image/webp",
+		avif: "image/avif",
+		svg: "image/svg+xml",
+		ico: "image/x-icon",
+		bmp: "image/bmp",
 
-	// Video
-	mp4: "video/mp4",
-	webm: "video/webm",
-	mov: "video/quicktime",
-	m4v: "video/x-m4v",
+		// Video
+		mp4: "video/mp4",
+		webm: "video/webm",
+		mov: "video/quicktime",
+		m4v: "video/x-m4v",
 
-	// Audio
-	mp3: "audio/mpeg",
-	m4a: "audio/mp4",
-	wav: "audio/wav",
-	ogg: "audio/ogg",
-	flac: "audio/flac",
+		// Audio
+		mp3: "audio/mpeg",
+		m4a: "audio/mp4",
+		wav: "audio/wav",
+		ogg: "audio/ogg",
+		flac: "audio/flac",
 
-	// Documents
-	pdf: "application/pdf",
-	html: "text/html; charset=utf-8",
-	md: "text/markdown; charset=utf-8",
-	txt: "text/plain; charset=utf-8",
-	csv: "text/csv; charset=utf-8",
-	json: "application/json; charset=utf-8",
-	xml: "application/xml; charset=utf-8",
+		// Documents
+		pdf: "application/pdf",
+		html: "text/html; charset=utf-8",
+		md: "text/markdown; charset=utf-8",
+		txt: "text/plain; charset=utf-8",
+		csv: "text/csv; charset=utf-8",
+		json: "application/json; charset=utf-8",
+		xml: "application/xml; charset=utf-8",
 
-	// Archives
-	zip: "application/zip",
-	gz: "application/gzip",
-	tar: "application/x-tar",
-};
+		// Archives
+		zip: "application/zip",
+		gz: "application/gzip",
+		tar: "application/x-tar",
+	}),
+);
 
 /**
  * Source files are served as plain text so a browser displays them instead of
@@ -84,8 +88,9 @@ export function contentTypeFor(key: string): string {
 	const dot = key.lastIndexOf(".");
 	const extension = dot === -1 ? "" : key.slice(dot + 1).toLowerCase();
 
-	if (extension in CONTENT_TYPES) {
-		return CONTENT_TYPES[extension];
+	const knownType = CONTENT_TYPES.get(extension);
+	if (knownType !== undefined) {
+		return knownType;
 	}
 	if (SOURCE_EXTENSIONS.has(extension)) {
 		return PLAIN_TEXT;

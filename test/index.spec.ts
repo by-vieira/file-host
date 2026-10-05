@@ -131,6 +131,11 @@ describe("download", () => {
 		expect(download.headers.get("Content-Type")).toBe("application/octet-stream");
 	});
 
+	it("treats an extension named after an Object property as unknown", async () => {
+		const response = await exports.default.fetch(await upload("notes.constructor", "hello"));
+		expect(response.headers.get("Content-Type")).toBe("application/octet-stream");
+	});
+
 	it("404s an unknown key", async () => {
 		expect((await exports.default.fetch("https://files.test/missing.txt")).status).toBe(404);
 	});
