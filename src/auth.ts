@@ -15,5 +15,5 @@ export async function isValidToken(provided: string | null, expected: string): P
 }
 
 function sha256(value: string): Promise<ArrayBuffer> {
-	return crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+	return crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
 }

@@ -11,5 +11,5 @@
 	},
 	"oxc.unusedDisableDirectives": "warn",
 	"js/ts.tsdk.path": "node_modules/typescript/lib",
-	"typescript.native-preview.tsdk": "node_modules/@typescript/native-preview",
+	"typescript.native-preview.tsdk": "node_modules/@typescript/native-preview"
 }

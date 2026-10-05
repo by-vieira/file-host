@@ -10,23 +10,23 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	"secrets": {
-		"required": ["UPLOAD_TOKEN"]
+		"required": ["UPLOAD_TOKEN"],
 	},
 	"observability": {
-		"enabled": true
+		"enabled": true,
 	},
 	"upload_source_maps": true,
 	"routes": [
 		{
 			"pattern": "file-host.vieira.tools",
-			"custom_domain": true
-		}
+			"custom_domain": true,
+		},
 	],
 	"r2_buckets": [
 		{
 			"binding": "BUCKET",
-			"bucket_name": "file-host"
-		}
+			"bucket_name": "file-host",
+		},
 	],
 	"ratelimits": [
 		{
@@ -34,10 +34,10 @@
 			"namespace_id": "274981531",
 			"simple": {
 				"limit": 60,
-				"period": 60
-			}
-		}
-	]
+				"period": 60,
+			},
+		},
+	],
 	/**
 	 * Secrets
 	 * UPLOAD_TOKEN gates every PUT. Set it locally in .dev.vars and in production
