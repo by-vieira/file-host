@@ -1,13 +1,66 @@
 # file-host
 
-A Cloudflare Worker that lets agents upload files to R2 and get back a permanent
-public URL for pull-request screenshots, recordings, and reports.
+A Cloudflare Worker that gives coding agents a permanent public URL for
+pull-request screenshots, recordings, and reports.
 
-Coding agents can attach text to a pull request but have no simple place to put
-a video or screenshot. This Worker gives them one `curl` command for it. The idea
-comes from [Theo Browne's file host](https://www.youtube.com/watch?v=e1snsuY4lTI).
+An agent can write code and open a pull request, but it has no simple way to put
+a screenshot or a screen recording in one. GitHub's API has no way to attach a
+file to a pull request. file-host gives the agent one `curl` command: it uploads
+the file, and the response body is the URL to paste into the pull request.
 
 Live at `https://file-host.vieira.tools`.
+
+[![A test report uploaded to file-host and opened from the returned URL](https://file-host.vieira.tools/test-report-cb2c35c1311af2898e49c221020fb20a.png)](https://file-host.vieira.tools/test-report-b30398a7f7a8e05da1ebbb2a442ef140.html)
+
+This is this project's own test report, uploaded with the command in
+[For agents](#for-agents). The upload returned
+[this URL](https://file-host.vieira.tools/test-report-b30398a7f7a8e05da1ebbb2a442ef140.html),
+which serves the live HTML.
+
+## Why I built it
+
+The idea comes from
+[Theo Browne's file host](https://www.youtube.com/watch?v=e1snsuY4lTI). He
+noticed his agents going to awkward lengths to get a video into a pull request,
+and gave them a single upload endpoint instead. I wanted the same thing for my
+own agents. The goal was the smallest service that is still safe to leave open
+on the internet.
+
+Most of the design follows from two facts. Agents follow instructions
+literally, and every uploaded file is public.
+
+- **The response body is the URL.** There is no JSON to parse and no trailing
+  newline. An agent pastes the body straight into Markdown.
+- **URLs never change.** Each key gets a 128-bit random suffix, and R2 rejects a
+  write to a key that already exists. A URL that appears in a merged pull
+  request always shows the same bytes, so browsers can cache it for a year.
+- **The uploader never chooses the content type.** The Worker picks it from the
+  file extension. Unknown extensions download as `application/octet-stream`, so
+  a caller cannot make the domain serve executable content by sending a
+  `Content-Type` header.
+- **HTML runs in a sandbox.** Test reports often need scripts, so HTML and SVG
+  can run them, but a strict `Content-Security-Policy` gives them an opaque
+  origin. A hosted page cannot read this domain's cookies, submit forms, or be
+  framed.
+- **Uploads stream into R2.** The Worker never holds a file in memory, so the
+  100 MB cap is a policy choice, not a limit of the Worker's 128 MB of memory.
+- **The token check leaks nothing through timing.** Both the presented token
+  and the secret are hashed with SHA-256, then compared with
+  `crypto.subtle.timingSafeEqual`. Hashing first keeps the comparison constant
+  time even when the lengths differ.
+
+## Tech stack
+
+- **TypeScript**, with `strict` on.
+- **Cloudflare Workers** runs the code.
+- **Cloudflare R2** stores the files.
+- **Workers Rate Limiting** caps uploads.
+- **Wrangler 4** runs local development, deploys, and generates binding types.
+- **Vitest 4** with `@cloudflare/vitest-plugin` runs the tests inside `workerd`,
+  the same runtime as production, against a local R2 bucket.
+- **tsgo**, the TypeScript native preview, typechecks the source and tests.
+- **oxlint** lints the code and **oxfmt** formats it.
+- **GitHub Actions** runs format, lint, typecheck, and tests on every push.
 
 ## For agents
 
@@ -65,6 +118,51 @@ publish yourself.
 
 ## Setup
 
+You need Node.js (CI uses the current LTS release) and, to deploy, a Cloudflare
+account with R2 enabled.
+
+### Run it locally
+
+1. Install the dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy the local secrets file. It holds a token that only works locally:
+
+   ```bash
+   cp .dev.vars.example .dev.vars
+   ```
+
+3. Start the Worker. Wrangler prints the address it listens on, usually
+   `http://localhost:8787`:
+
+   ```bash
+   npm run dev
+   ```
+
+4. In a second terminal, upload a file with the token from `.dev.vars`:
+
+   ```bash
+   curl -sS --fail-with-body -X PUT -T README.md \
+     -H "X-Upload-Token: local-development-token-0000000000000000" \
+     "http://localhost:8787/README.md"
+   ```
+
+   The response is the file's URL. Under `wrangler dev`, the URL names the
+   production host, because the custom-domain route in `wrangler.jsonc` sets the
+   request's host. To open the local copy, keep the key and swap the host:
+   `http://localhost:8787/<key>`.
+
+5. Run the tests once:
+
+   ```bash
+   npx vitest run
+   ```
+
+### Deploy
+
 The Worker needs an R2 bucket and an upload token.
 
 ```bash
@@ -74,17 +172,15 @@ npx wrangler deploy
 ```
 
 Wrangler refuses to deploy if `UPLOAD_TOKEN` is missing. The configuration also
-disables the public `workers.dev` route and version preview URLs.
-
-For local development, copy `.dev.vars.example` to `.dev.vars` and run
-`npm run dev`. The local token is separate from the deployed one.
+disables the public `workers.dev` route and version preview URLs. To deploy
+under your own domain, change the `routes` pattern in `wrangler.jsonc`.
 
 ## Commands
 
 | Command              | Purpose                        |
 | -------------------- | ------------------------------ |
 | `npm run dev`        | Local development server       |
-| `npm test`           | Run the test suite             |
+| `npm test`           | Run the tests in watch mode    |
 | `npm run typecheck`  | Typecheck source and tests     |
 | `npm run lint`       | Lint with oxlint               |
 | `npm run format`     | Format with oxfmt              |
@@ -92,3 +188,30 @@ For local development, copy `.dev.vars.example` to `.dev.vars` and run
 | `npm run cf-typegen` | Regenerate `Env` from bindings |
 
 Run `cf-typegen` after changing bindings in `wrangler.jsonc`.
+
+## Limitations and next steps
+
+These are the known gaps in the current version.
+
+- **Files live forever.** There is no delete endpoint and no expiry. Removing a
+  file means running `wrangler r2 object delete` by hand, and storage only
+  grows. An R2 lifecycle rule could expire old uploads, though that would break
+  the promise that a URL in an old pull request keeps working.
+- **Every uploader shares one token.** Revoking one agent means rotating the
+  token for all of them. Per-agent tokens, stored as hashes, would allow
+  revoking one at a time and show who uploaded what.
+- **The rate limit is shared, and covers uploads only.** All uploaders draw from
+  one budget of 60 uploads per minute per Cloudflare location. Downloads have
+  no limit, and each one is an R2 read.
+- **Downloads are not cached at the edge.** The responses are marked immutable,
+  but the Worker reads every `GET` from R2. Serving them through the Workers
+  Cache API would cut R2 reads and latency for popular files.
+- **Uploads stop at 100 MB.** Larger recordings would need R2 multipart
+  uploads, which means a multi-request protocol that agents must follow.
+- **Local URLs point at production.** Under `wrangler dev`, the returned URL
+  names `file-host.vieira.tools` rather than the local server, as described in
+  [Run it locally](#run-it-locally).
+
+## License
+
+[MIT](LICENSE)
