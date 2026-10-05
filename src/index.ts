@@ -160,8 +160,8 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 	}
 
 	// HEAD shares every header with GET but must not carry a body. Without one the
-	// runtime has nothing to measure, so the length has to be stated explicitly —
-	// clients probing a file's size before downloading it depend on this.
+	// runtime has nothing to measure, so the length has to be stated explicitly.
+	// Clients probing a file's size before downloading it depend on this.
 	if (request.method === "HEAD") {
 		const length = range === null ? object.size : range.end - range.start + 1;
 		headers.set("Content-Length", String(length));
@@ -225,6 +225,7 @@ function decodePath(pathname: string): string | null {
 	}
 }
 
+/** Reads `Content-Length` as a byte count, or `null` when it is missing or malformed. */
 function declaredUploadSize(request: Request): number | null {
 	const value = request.headers.get("Content-Length");
 	if (value === null || !/^\d+$/.test(value)) {
@@ -235,6 +236,7 @@ function declaredUploadSize(request: Request): number | null {
 	return Number.isSafeInteger(size) ? size : null;
 }
 
+/** Builds a plain-text response. Every error and the upload URL go through here. */
 function text(body: string, status = 200, extraHeaders: Record<string, string> = {}): Response {
 	return new Response(body, {
 		status,
