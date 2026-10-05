@@ -77,7 +77,7 @@ The most common defect in a project like this is a change that works on the path
 - `npm run dev` starts `wrangler dev`. Copy `.dev.vars.example` to `.dev.vars` first; it holds a local-only token. Local R2 state lives in the gitignored `.wrangler/` directory, never in the real bucket.
 - Wrangler prints the port it bound when it starts. Read the real one from that line rather than assuming the default, since another dev server may hold it.
 - To try the Worker from another device, ask the maintainer instead of exposing a dev server.
-- The local token in `.dev.vars` is separate from the production `UPLOAD_TOKEN`. Never commit `.dev.vars`, print the production token, or paste either into a PR.
+- The local token in `.dev.vars` is separate from the production `UPLOAD_TOKEN`. Never commit `.dev.vars`, print the production token, or paste either into a commit message.
 - Stop what you started, by the PID you tracked. See rule 1.
 
 ## Test data
@@ -98,22 +98,23 @@ An empty bucket is a bad test. Exercise the behavior against files that look lik
 - Upon request, behavior that agents or viewers see should get one integrated pass against `npm run dev` with real `curl` uploads and downloads. Never verify against production unless the maintainer asks.
 - Run `npm run cf-typegen` after changing bindings in `wrangler.jsonc`, and check that `npx wrangler types --check` passes.
 
-## Pull requests
+## Commits
 
-- Never make a PR unless the developer explicitly asks you to do so.
+Issues, pull requests, projects, and the wiki are turned off for this repository, so it reads as a published project rather than an open one. Changes land as commits on `main`. Do not try to open an issue or a pull request here, and do not turn those features back on.
+
+- Never commit or push unless the developer explicitly asks you to do so.
 - Conventional commit titles, plain language: `fix(worker): uploads named .constructor get a safe content type`.
-- Body: the problem in a sentence or two, then how you fixed it. End with the model and harness that did the work.
-- Changes to what viewers see need before/after evidence, such as the response headers or a screenshot of the rendered file. Motion or timing needs a short video.
-- Upload PR evidence to GitHub. Never commit PR-only screenshots or assets such as `.github/pr-assets/`.
-- One request is one PR. Split it only when the maintainer asks. Outside contributions follow the same rule.
-- When babysitting: poll checks and comments newer than the last push, verify each bot finding against the source, fix real ones, dismiss false positives with a written reason. Stay quiet when nothing is new. Stop when the bots are green on the latest commit.
+- Body: the problem in a sentence or two, then how you fixed it. Close with what you verified and how.
+- Changes to what viewers see need before/after evidence, such as the response headers or a screenshot of the rendered file. Motion or timing needs a short video. Upload it with file-host and link it in the commit body. Never commit evidence screenshots or assets.
+- Keep each commit to one change. Unrelated changes go in separate commits.
+- After pushing, check that CI is green on the latest commit. Fix real failures, and tell a real break from a runner flake before acting.
 
 ## Documentation
 
 Most code changes do not need a documentation change. Agents can read the code.
 
 - Architectural decisions, constraints that span files, and traps that are hard to discover from the source go in a comment beside the code they explain, as the existing comments on range handling and token comparison do. Before adding one, ask what a maintainer would get wrong without it. If reading the relevant code answers the question, leave it out.
-- Do not document every feature, enumerate fields or methods, narrate control flow, maintain file catalogs, or append PR summaries. Types, tests, and code already record the implementation. The glossary defines shared vocabulary; it is not a feature index.
+- Do not document every feature, enumerate fields or methods, narrate control flow, maintain file catalogs, or append change summaries. Types, tests, and code already record the implementation. The glossary defines shared vocabulary; it is not a feature index.
 - Keep a local implementation explanation in a nearby code comment. Link to the relevant source instead of copying it.
 - When a documented decision or constraint changes, rewrite or remove the affected text. Do not append another account of the new behavior.
 - The README's "For agents" and "Behaviour" sections are the user docs. They help agents and people upload files and understand what they get back. Before adding text, ask what task or decision it helps the reader with.
@@ -123,8 +124,7 @@ Most code changes do not need a documentation change. Agents can read the code.
 ## Plans and work artifacts
 
 - Do not commit implementation plans, research notes, or agent scratch files. Keep temporary working material outside the repository.
-- Track active maintainer work in the GitHub issue that owns it. Outside proposals go in a GitHub issue.
-- A merged PR or pushed commit is the implementation record. Close or update its tracking item when the work lands; do not preserve a second checklist in the repository.
+- Issues are turned off, so there is no tracking item to update. A pushed commit is the implementation record. Do not preserve a second checklist in the repository.
 
 ## How it works
 
