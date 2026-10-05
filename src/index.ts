@@ -15,6 +15,7 @@ import { generateKey } from "./keys";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const MAX_UPLOAD_BYTES = 100_000_000;
 const MIN_TOKEN_LENGTH = 32;
+const ALLOWED_METHODS = "GET, HEAD, PUT, OPTIONS";
 
 const USAGE = `file-host.vieira.tools
 
@@ -50,8 +51,6 @@ export default {
 	},
 } satisfies ExportedHandler<Env>;
 
-const ALLOWED_METHODS = "GET, HEAD, PUT, OPTIONS";
-
 async function upload(
 	request: Request,
 	env: Env,
@@ -69,7 +68,8 @@ async function upload(
 		);
 	}
 
-	if (!(await isValidToken(request.headers.get("X-Upload-Token"), env.UPLOAD_TOKEN))) {
+	const providedToken = request.headers.get("X-Upload-Token");
+	if (!(await isValidToken(providedToken, env.UPLOAD_TOKEN))) {
 		return text("Invalid or missing X-Upload-Token\n", 401);
 	}
 
@@ -85,7 +85,7 @@ async function upload(
 		return text("Content-Length is required for uploads\n", 411);
 	}
 	if (uploadSize > MAX_UPLOAD_BYTES) {
-		return uploadTooLarge();
+		return text("Upload exceeds the 100 MB limit\n", 413);
 	}
 
 	const { success } = await env.UPLOAD_RATE_LIMITER.limit({ key: "uploads" });
@@ -154,7 +154,7 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 
 	// Never answer 206 to a request that did not ask for a range, whatever R2 reports.
 	const range = request.headers.has("Range") ? resolveRange(object.range, object.size) : null;
-
+	const status = range === null ? 200 : 206;
 	if (range !== null) {
 		headers.set("Content-Range", `bytes ${range.start}-${range.end}/${object.size}`);
 	}
@@ -166,10 +166,10 @@ async function download(request: Request, env: Env, key: string): Promise<Respon
 		const length = range === null ? object.size : range.end - range.start + 1;
 		headers.set("Content-Length", String(length));
 
-		return new Response(null, { status: range === null ? 200 : 206, headers });
+		return new Response(null, { status, headers });
 	}
 
-	return new Response(object.body, { status: range === null ? 200 : 206, headers });
+	return new Response(object.body, { status, headers });
 }
 
 /**
@@ -233,10 +233,6 @@ function declaredUploadSize(request: Request): number | null {
 
 	const size = Number(value);
 	return Number.isSafeInteger(size) ? size : null;
-}
-
-function uploadTooLarge(): Response {
-	return text("Upload exceeds the 100 MB limit\n", 413);
 }
 
 function text(body: string, status = 200, extraHeaders: Record<string, string> = {}): Response {
